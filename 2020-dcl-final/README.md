@@ -1,4 +1,4 @@
-# Own challenge
+# Electricity generation in the United States
 
 Folders:
 
