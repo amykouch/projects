@@ -1,0 +1,173 @@
+---
+title: "Wind Energy in Texas"
+author: "Amy Kouch"
+date: 2019-
+output: 
+  github_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+# Libraries
+library(tidyverse)
+library(readxl)
+library(lubridate)
+
+# Parameters
+
+YEAR <- 2018
+
+file_texas_ba <- 
+  here::here(str_glue("c01-own/data/texas_ba.rds"))
+
+file_texas_wind <- 
+  here::here(str_glue("c01-own/data/texas_wind_{YEAR}.rds"))
+
+solutions <- 
+  c(
+    natural_gas = 0, 
+    coal = 0, 
+    wind = 0.639, 
+    nuclear = 0,
+    hydro = 0.03,
+    solar = 0.326, 
+    oil = 0,
+    other = 0.005, 
+    unknown = 0
+  )
+```
+
+```{r}
+texas_ba <-
+  file_texas_ba %>%
+  read_rds() 
+
+texas_wind_2018 <-
+  file_texas_wind %>%
+  read_rds()
+```
+
+```{r}
+
+texas_wind <-
+  texas_wind_2018 %>%
+  select(
+    date_time, 
+    wind_capacity_MW, 
+    wind_output_percent_load,
+    wind_output_percent_installed
+  )
+
+texas_ba_wind <-
+  texas_ba %>%
+  mutate(
+    year = year(date),
+    local_time = local_time - hours(1)
+    ) %>%
+  filter(year == 2018) %>%
+  left_join(texas_wind, by = c("local_time" = "date_time")) %>%
+  drop_na(wind_output_percent_installed) 
+
+texas_ba_wind_solutions <-
+  texas_ba_wind %>%
+  pivot_longer(
+    cols = c(
+      coal, 
+      natural_gas, 
+      nuclear, 
+      oil, 
+      hydro, 
+      solar, 
+      wind, 
+      other, 
+      unknown
+    ),
+    names_to = "fuel",
+    values_to = "mwh"
+  ) %>%
+  group_by(fuel) %>%
+  summarise(
+    percent = sum(mwh, na.rm = TRUE) / sum(net_generation, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  arrange(desc(percent))
+```
+
+```{r}
+texas_ba %>%
+  count(date, wt = demand) %>%
+  ggplot(aes(date, n)) +
+  geom_line()
+
+texas_ba %>%
+  count(date, wt = demand) %>%
+  filter(n == 0)
+
+texas_ba %>%
+  mutate(year = year(date)) %>%
+  count(year, wt = demand) %>%
+  ggplot(aes(year, n)) +
+  geom_line()
+
+texas_ba %>%
+  count(date, wt = demand) %>%
+  ggplot(aes(date, n)) +
+  geom_line()
+
+texas_ba %>%
+  mutate(hour = hour(local_time)) %>%
+  count(hour, wt = demand) %>%
+  ggplot(aes(hour, n)) +
+  geom_line()
+```
+
+```{r}
+v <-
+  texas_ba_wind %>%
+  pivot_longer(
+    cols = c(
+      coal, 
+      natural_gas, 
+      nuclear, 
+      oil, 
+      hydro, 
+      solar, 
+      wind, 
+      other, 
+      unknown
+    ),
+    names_to = "fuel",
+    values_to = "mwh"
+  ) %>%
+  filter(fuel == "wind") %>%
+  mutate(
+    mwh_renewable = solutions[["wind"]] * mwh
+  ) %>% 
+  select(
+    date, 
+    demand,
+    wind_capacity_MW,
+    wind_output_percent_load,
+    wind_output_percent_installed,
+    fuel,
+    mwh,
+    mwh_renewable
+  )
+
+v %>%
+  pivot_longer(
+    cols = c(mwh, mwh_renewable),
+    names_to = "scenario",
+    values_to = "mwh"
+  ) %>%
+  group_by(date, scenario) %>%
+  summarise(mwh = sum(mwh)) %>%
+  ungroup() %>%
+  ggplot(aes(date, mwh)) +
+  geom_line(aes(color = scenario))
+```
+
