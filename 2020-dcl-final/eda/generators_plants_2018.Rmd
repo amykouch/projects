@@ -1,0 +1,376 @@
+---
+title: "Electricity Generation Map (2018)"
+author: "Amy Kouch"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include = FALSE}
+
+# Libraries
+library(tidyverse)
+library(ussf)
+library(sf)
+library(readxl)
+library(here)
+library(mapproj)
+library(lubridate)
+
+# Parameters
+
+YEAR <- 2018
+
+file_generators_plants <- 
+  here::here(str_glue("c01-own/data/generators_plants_{YEAR}.rds"))
+
+file_texas_load <- 
+  here::here(str_glue("c01-own/data/texas_load_{YEAR}.rds"))
+
+file_texas_wind <- 
+  here::here(str_glue("c01-own/data/wind_generation_{YEAR}.rds"))
+
+states <-
+  ussf::boundaries(geography = "state", projection = "albers") %>%
+  filter(!NAME %in% c("Alaska", "Hawaii")) 
+
+texas <-
+  ussf::boundaries(geography = "state", projection = "albers") %>%
+  filter(NAME %in% "Texas") 
+
+natural_gas <-
+  c(
+    "Natural Gas Fired Combined Cycle",
+    "Natural Gas Fired Combustion Turbine",
+    "Natural Gas Internal Combustion Engine",
+    "Natural Gas Steam Turbine",
+    "Natural Gas with Compressed Air Storage",
+    "Other Natural Gas"
+  )
+
+coal <-
+  c(
+    "Coal Integrated Gasification Combined Cycle", 
+    "Conventional Steam Coal")
+
+nuclear <-
+  c("Nuclear")
+
+hydroelectric <-
+  c(
+    "Conventional Hydroelectric",
+    "Hydroelectric Pumped Storage"
+  )
+
+oil <-
+  c(
+    "Petroleum Coke",
+    "Petroleum Liquids"
+  )
+
+wind <-
+  c(
+    "Offshore Wind Turbine",
+    "Onshore Wind Turbine")
+
+solar <-
+  c(
+    "Solar Photovoltaic"
+  )
+
+other <-
+  c(
+    "All Other", 
+    "Batteries",
+    "Flywheels",
+    "Geothermal",
+    "Landfill Gas",
+    "Municipal Solid Waste",
+    "Other Gases",
+    "Other Waste Biomass",
+    "Wood/Wood Waste Biomass",
+    "Solar Thermal with Energy Storage",
+    "Solar Thermal without Energy Storage",
+    NA_real_
+  )
+
+#===============================================================================
+```
+
+### Mapping how the United States generates its electricity
+Recreating [The Washington Post's Visualizations](https://www.washingtonpost.com/graphics/national/power-plants/?noredirect=on&utm_term=.c26c761b9a3c) regarding power plant generation in the United States.
+
+```{r include = FALSE}
+
+US_ALBERS <- 
+  "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +datum=WGS84 +no_defs"
+
+gen_plants <-
+  file_generators_plants %>%
+  read_rds() %>%
+  mutate(
+    fuel = 
+      case_when(
+        technology %in% natural_gas ~ "Natural Gas",
+        technology %in% coal ~ "Coal",
+        technology %in% nuclear ~ "Nuclear",
+        technology %in% hydroelectric ~ "Hydroelectric",
+        technology %in% oil ~ "Oil",
+        technology %in% wind ~ "Wind",
+        technology %in% solar ~ "Solar",
+        technology %in% other ~ "Other",
+      )
+  ) %>%
+  group_by(plant_code, fuel) %>%
+  mutate(
+    capacity = sum(capacity)
+  ) %>%
+  distinct() %>%
+  drop_na(long, lat) %>%
+  st_as_sf(coords = c("long", "lat"), crs = 4326) %>%
+  st_transform(crs = US_ALBERS) 
+
+```
+
+
+```{r echo = FALSE}
+
+gen_plants %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_sf(
+    aes(color = fuel, size = capacity, alpha = 0.4),
+    data = gen_plants,
+    show.legend = "point"
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "#f78b29", 
+        "Coal" = "#585b56", 
+        "Nuclear" = "#cf4a9b", 
+        "Hydroelectric" = "#0081c5", 
+        "Oil" = "#ee1b24", 
+        "Wind" = "#0fb14c", 
+        "Solar" = "#d7c944", 
+        "Other" = "#ffefd6"
+      )
+  ) +
+  scale_size(
+    range = c(0.1, 6), 
+    breaks = c(50, 500, 2000, 5000)
+  ) + 
+  theme_void() + 
+  theme(
+    legend.position = "right"
+  ) 
+```
+
+### Plants by Fuel Type
+
+The visualizations below are also recreations of the Washington Post's maps of the US.
+
+Regionally:
+* Wind plants are along the middle of the United States
+* Solar and hydroelectric power are on the two coasts
+* Natural gas appears to be prevalent everywhere
+* Coal, oil, and nuclear are more common in the East than the West
+
+```{r echo = FALSE}
+plot_by_fuel <- function(fuel_type) {
+gen_plants %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_sf(
+    aes(color = fuel, size = capacity, alpha = 0.4),
+    data = gen_plants %>% filter(fuel %in% fuel_type),
+    show.legend = "point"
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "#f78b29", 
+        "Coal" = "#585b56", 
+        "Nuclear" = "#cf4a9b", 
+        "Hydroelectric" = "#0081c5", 
+        "Oil" = "#ee1b24", 
+        "Wind" = "#0fb14c", 
+        "Solar" = "#d7c944", 
+        "Other" = "#ffefd6"
+      )
+  ) +
+  scale_size(
+    range = c(0.1, 6), 
+    breaks = c(50, 500, 2000, 5000)
+  ) + 
+  theme_void() + 
+  theme(
+    legend.position = "none"
+  ) +
+  labs(
+    title = str_glue(fuel_type, " Power in the United States")
+  )
+}
+
+plot_by_fuel("Natural Gas")
+plot_by_fuel("Coal")
+plot_by_fuel("Nuclear")
+plot_by_fuel("Hydroelectric")
+plot_by_fuel("Wind")
+plot_by_fuel("Solar")
+plot_by_fuel("Oil")
+```
+
+### Energy Mix in Texas
+
+__Understanding Texas' energy mix__
+
+* More than 60% of Texas' capacity is in Natural gas
+* Renewable energy resources are less than 20% of the mix
+* Baseload sources: nuclear, coal 
+* Peaker: natural gas
+
+The Solutions Project has determined that the ideal renewable energy mix includes 50% of [wind](https://thesolutionsproject.org/infographic/#tx) by 2050. 
+
+```{r echo = FALSE}
+gen_plants %>%
+  filter(state == "TX") %>%
+  ggplot() +
+  geom_sf(
+    data = texas, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_sf(
+    aes(color = fuel, size = capacity),
+    alpha = 0.5
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "#f78b29", 
+        "Coal" = "#585b56", 
+        "Nuclear" = "#cf4a9b", 
+        "Hydroelectric" = "#0081c5", 
+        "Oil" = "#ee1b24", 
+        "Wind" = "#0fb14c", 
+        "Solar" = "#d7c944", 
+        "Other" = "#ffefd6"
+      )
+  ) +
+  scale_size(
+    range = c(0.25, 6), 
+    breaks = c(50, 500, 2000, 5000)
+  ) + 
+  theme_void() + 
+  theme(
+    legend.position = "none"
+  )
+
+gen_plants %>%
+  st_drop_geometry() %>%
+  filter(state == "TX") %>%
+  group_by(fuel) %>%
+  summarise(
+    generation = sum(capacity)
+  ) %>%
+  mutate(
+    percentage = round(generation / sum(generation), 3)
+  ) %>%
+  knitr::kable()
+
+gen_plants %>%
+  st_drop_geometry() %>%
+  filter(state == "TX") %>%
+  group_by(fuel) %>%
+  summarise(
+    generation = sum(capacity)
+  ) %>%
+  mutate(
+    percentage = round(generation / sum(generation), 3),
+    renewable = if_else(
+      fuel %in% c("Solar", "Hydroelectric", "Wind"), "Renewable", "Non-Renewable"
+    ),
+    fuel = fct_reorder(fuel, percentage)
+  ) %>%
+  ggplot(aes(fct_rev(fuel), percentage, fill = renewable)) +
+  geom_col() +
+  labs(
+    title = "Current Energy Mix in Texas (2018)",
+    x = "Fuel",
+    fill = "Energy Type"
+  )
+
+projection <-
+  tibble(
+    fuel = 
+      c(
+        "Natural Gas", 
+        "Coal", 
+        "Wind", 
+        "Nuclear", 
+        "Other", 
+        "Hydroelectric", 
+        "Solar", 
+        "Oil"
+      ), 
+    percent_projected = c(0, 0, .639, 0, 0.005, .03, .326, 0), 
+  )
+
+gen_plants %>%
+  st_drop_geometry() %>%
+  filter(state == "TX") %>%
+  group_by(fuel) %>%
+  summarise(
+    generation = sum(capacity)
+  ) %>%
+  mutate(
+    fuel = as_factor(fuel),
+    percent_current = round(generation / sum(generation), 3),
+    renewable = if_else(
+      fuel %in% c("Solar", "Hydroelectric", "Wind"), "Renewable", "Non-Renewable"
+    ),
+  ) %>% 
+  left_join(projection, by = "fuel") %>%
+  mutate(
+    changes = percent_projected - percent_current,
+    color = if_else(changes > 0, TRUE, FALSE)
+    ) %>%
+  ggplot(aes(fuel, changes, fill = color)) +
+  geom_col() +
+  theme(legend.position = "none") +
+  labs(
+    title = "Projected Renewable Energy Mix in Texas (2050)",
+    x = "Fuel",
+    fill = "Energy Type"
+  )
+
+```
+
+As seen from the visualization above, Texas will have to increase its already- large wind capacity.
+
+__"Texas produces more electricity than any other state, generating almost twice as much as Florida, the second-highest electricity-producing state." (EIA)__
+
+```{r}
+gen_plants %>%
+  st_drop_geometry() %>%
+  group_by(state) %>%
+  summarise(energy_produced = sum(capacity)) %>%
+  arrange(desc(energy_produced))
+```

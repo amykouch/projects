@@ -1,0 +1,481 @@
+---
+title: "Progress report 1"
+author: "Amy Kouch"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+* Created three scripts: generators, plants, and generators_plants that read in the dataset and clean them from the raw data files. generators_plants combines the two datasets together
+* Cleaned the data to be able to use for visualization
+* Recreated the WSJ's visualizations (but needs improvement!)
+
+## Key Findings
+
+* Better understanding how the US generates electricity
+* How to categorize different fuel types
+* Natural gas generates the most electricity in the US
+
+```{r include = FALSE}
+# Libraries
+library(tidyverse)
+library(ussf)
+library(sf)
+library(readxl)
+library(here)
+library(mapproj)
+
+# Parameters
+
+file_generators_plants <- 
+  here::here("c01-own/data/generators_plants_2016.rds")
+
+states <-
+  ussf::boundaries(geography = "state", projection = "longlat") %>%
+  filter(!NAME %in% c("Alaska", "Hawaii")) 
+
+natural_gas <-
+  c(
+    "Natural Gas Fired Combined Cycle",
+    "Natural Gas Fired Combustion Turbine",
+    "Natural Gas Internal Combustion Engine",
+    "Natural Gas Steam Turbine",
+    "Natural Gas with Compressed Air Storage",
+    "Other Natural Gas"
+  )
+
+coal <-
+  c(
+    "Coal Integrated Gasification Combined Cycle", 
+    "Conventional Steam Coal")
+
+nuclear <-
+  c("Nuclear")
+
+hydroelectric <-
+  c(
+    "Conventional Hydroelectric",
+    "Hydroelectric Pumped Storage"
+  )
+
+oil <-
+  c(
+    "Petroleum Coke",
+    "Petroleum Liquids"
+  )
+
+wind <-
+  c(
+    "Offshore Wind Turbine",
+    "Onshore Wind Turbine")
+
+solar <-
+  c(
+    "Solar Photovoltaic"
+  )
+
+other <-
+  c(
+    "All Other", 
+    "Batteries",
+    "Flywheels",
+    "Geothermal",
+    "Landfill Gas",
+    "Municipal Solid Waste",
+    "Other Gases",
+    "Other Waste Biomass",
+    "Wood/Wood Waste Biomass",
+    "Solar Thermal with Energy Storage",
+    "Solar Thermal without Energy Storage",
+    NA_real_
+  )
+
+gen_plants <-
+  file_generators_plants %>%
+  read_rds() %>%
+  mutate(
+    fuel = 
+      case_when(
+        technology %in% natural_gas ~ "Natural Gas",
+        technology %in% coal ~ "Coal",
+        technology %in% nuclear ~ "Nuclear",
+        technology %in% hydroelectric ~ "Hydroelectric",
+        technology %in% oil ~ "Oil",
+        technology %in% wind ~ "Wind",
+        technology %in% solar ~ "Solar",
+        technology %in% other ~ "Other",
+      ), 
+    capacity_MW = 
+      case_when(
+        capacity <= 500 ~ 50,
+        capacity <= 2000 ~ 5000,
+        capacity < 50000  ~ 2000,
+        capacity >= 50000 ~ 50000
+      )
+  ) %>%
+  group_by(plant_code) %>%
+  distinct()
+
+```
+
+
+```{r echo = FALSE}
+
+gen_plants %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants,
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Natural Gas") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Natural Gas"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Coal") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Coal"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Oil") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Oil"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Hydroelectric") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Hydroelectric"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Nuclear") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Nuclear"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Wind") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Wind"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Solar") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Solar"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+gen_plants %>%
+  filter(fuel == "Other") %>%
+  ggplot() +
+  geom_sf(
+    data = states, 
+    fill = "lightgray", 
+    color = "white", 
+    size = 0.3
+  ) + 
+  geom_point(
+    data = gen_plants %>% filter(fuel == "Other"),
+    mapping = 
+      aes(
+        x = long, 
+        y = lat, 
+        size = capacity_MW, 
+        color = fuel, 
+      ),
+      alpha = 0.4
+  ) + 
+  scale_color_manual(
+    values = 
+      c(
+        "Natural Gas" = "darkorange1", 
+        "Coal" = "grey40", 
+        "Nuclear" = "maroon3", 
+        "Hydroelectric" = "deepskyblue3", 
+        "Oil" = "red2", 
+        "Wind" = "mediumseagreen", 
+        "Solar" = "yellow4", 
+        "Other" = "wheat"
+      )
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) 
+
+
+```
+
+
+## Current Issues
+
+After meeting with Bill, we discussed doing an economic analysis of transitioning into 100% renewable- what is the gap between where we are now and where we need to go? We discussed finding a paper that has already done this analysis, but one of my current challenges is finding this paper. 
+
+Papers vary in terms of their reports for the cost of transitioning into renewable energy. The papers have very large assumptions and differ by billions of $. 
+
+Other issues: adding Hawaii/Alaska, fixing the size of points
+
+## Next Steps
+
+* Check for accuracy of my numbers versus WSJ's numbers
+* Create a function for visualizations
+* Make minor edits to better visualizations: size, color, remove background, Hawaii/Alaska
+* Find a paper with some sort of economic analysis or find a different analysis of the papers
+* Calculate percentage of electricity that is currently renewable in all 50 states
