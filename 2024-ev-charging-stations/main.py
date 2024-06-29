@@ -33,7 +33,7 @@ ALT_FUEL_URL = 'https://developer.nrel.gov/api/alt-fuel-stations/v1.geojson?'
 ALT_FUEL_PARAMETERS = f'api_key={API_KEY}&fuel_type=ELEC&status=E&access=public'
 
 # set file paths
-DIR = os.getcwd()
+DIR = os.getcwd() + '/Documents/projects/2024-ev-charging-stations'
 US_SHAPEFILE = DIR + '/data/cb_2023_us_county_500k/cb_2023_us_county_500k.shp'
 OUTPUT_FOLDER = DIR + '/output/'
 
@@ -247,3 +247,7 @@ fig.update_traces(hovertemplate='<b>%{customdata[0]}</b><br>' +
                                 '<i>%{customdata[1]}</i><br><br>' +
                                 '%{customdata[2]}<br>%{customdata[3]}, %{customdata[4]} %{customdata[5]}')
 fig.show()
+
+# save file
+fig.write_html(OUTPUT_FOLDER + 'us_ev_charging_stations_hours.html')
+
