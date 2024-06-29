@@ -231,6 +231,11 @@ hours_map['longitude'] = hours_map['geometry'].x
 hours_map['latitude'] = hours_map['geometry'].y
 hours_map['access'] = hours_map['access'].replace({0: 'closed', 1: 'open'})
 
+# only include 10,000 random stations to reduce html file size and keep under git limit
+station_subset = hours_map[['id']].drop_duplicates().sample(6000)
+
+hours_map = hours_map[hours_map['id'].isin(station_subset['id'].unique())]
+
 # plot + format the map
 fig = px.scatter_mapbox(hours_map, lat='latitude', lon='longitude', zoom=3,
                         title='<b>Public EV Charging Stations in the U.S.</b><br>Accessible Hours',
@@ -248,6 +253,7 @@ fig.update_traces(hovertemplate='<b>%{customdata[0]}</b><br>' +
                                 '%{customdata[2]}<br>%{customdata[3]}, %{customdata[4]} %{customdata[5]}')
 fig.show()
 
-# save file
+# save smaller version of file
+
 fig.write_html(OUTPUT_FOLDER + 'us_ev_charging_stations_hours.html')
 
