@@ -3,6 +3,10 @@ Publicly Available Electric Vehicle Charging Stations in the United States
 Author: Amy K.
 Date: June 2024
 
+Objectives: Create
+1) Static map of EV charging stations in the US, by facility type
+2) Dynamic map of EV charging stations in the US, by charging availability during the hour of the day
+
 Sources:
 * National Renewable Energy Laboratory (June 2024)
     - https://developer.nrel.gov/docs/transportation/alt-fuel-stations-v1/
