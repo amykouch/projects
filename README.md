@@ -1,9 +1,9 @@
 ## AMY KOUCH
 
 Bay Area, CA | [LinkedIn](https://www.linkedin.com/in/amykouch/)
-- **Currently:** Senior Data Analyst @ NextEra Energy
-  - *Programming Language:* Python
-- **Areas of Interest:** Electric Vehicles, Building Decarbonization, Utilities
+- **Currently:** Data Scientist @ EPRI
+  - *Programming Languages & Tools:* Python, SQL, Tableau
+- **Areas of Interest:** Mobility, Decarbonization, Utilities
 
 #### Featured Projects
 - [Public Electric Vehicle Charging Stations in the United States](https://github.com/amykouch/projects/tree/main/2024-ev-charging-stations) (2024)
@@ -14,6 +14,8 @@ Bay Area, CA | [LinkedIn](https://www.linkedin.com/in/amykouch/)
   - *Programming Language:* R
 
 #### Additional Highlights
+- Senior Data Analyst at NextEra Energy (2021-2024)
+  - *Programming Language:* Python
 - Clean Energy Strategic Analyst at Pacific Gas & Electric (2020-2021)
 - Intern for the Office of Sustainability (2018-2020)
   - *Programming Language:* R
